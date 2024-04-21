@@ -5,6 +5,8 @@ using System.Linq;
 using System.Security.Claims;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
@@ -61,11 +63,34 @@ namespace ImSuperSir.Security.Controllers
             return Ok(BuildToken(pUserCredentials));
         }
 
+
+        [HttpGet("Renovar")]
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
+        public async Task<IActionResult> Renovar()
+        {
+            var emailClaim = HttpContext.User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name);
+            if (emailClaim == null)
+            {
+                return BadRequest("Invalid login attempt");
+            }
+
+            var email = emailClaim.Value;
+
+            var lUser = await _UserManager.FindByNameAsync(email);
+
+            if (lUser == null)
+            {
+                return BadRequest("Invalid login attempt");
+            }
+
+            return Ok(BuildToken(new UserCredentials { Email = email }));
+        }
+
         private AuthenticationResponse BuildToken(UserCredentials pUserCredentials)
         {
             var claims = new List<Claim>
             {
-                new Claim(JwtRegisteredClaimNames.UniqueName, pUserCredentials.Email),
+                new Claim(JwtRegisteredClaimNames.Name, pUserCredentials.Email),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
             };
 
